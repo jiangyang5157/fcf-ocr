@@ -16,11 +16,11 @@ import android.util.Size
 import android.view.WindowManager
 import android.widget.Toast
 import com.fiserv.mobiliti_ocr.R
-import com.fiserv.mobiliti_ocr.ext.cameraManager
-import com.fiserv.mobiliti_ocr.ext.instance
-import com.fiserv.mobiliti_ocr.ext.replaceFragmentInActivity
-import com.fiserv.mobiliti_ocr.render.FpsMeter
-import com.fiserv.mobiliti_ocr.render.Renderable
+import com.fiserv.kit.ext.cameraManager
+import com.fiserv.kit.ext.instance
+import com.fiserv.kit.ext.replaceFragmentInActivity
+import com.fiserv.kit.render.FpsMeter
+import com.fiserv.kit.render.Renderable
 import com.fiserv.mobiliti_ocr.utils.Imgproc
 import com.fiserv.mobiliti_ocr.widget.overlay.OText
 import com.fiserv.mobiliti_ocr.widget.overlay.OverlayView

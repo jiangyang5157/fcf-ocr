@@ -1,4 +1,4 @@
-package com.fiserv.mobiliti_ocr.widget
+package com.fiserv.kit.widget
 
 import android.content.Context
 import android.util.AttributeSet

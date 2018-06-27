@@ -4,7 +4,7 @@ import android.content.Context
 import android.graphics.Canvas
 import android.util.AttributeSet
 import android.view.View
-import com.fiserv.mobiliti_ocr.render.Renderable
+import com.fiserv.kit.render.Renderable
 import java.util.*
 
 class OverlayView : View {

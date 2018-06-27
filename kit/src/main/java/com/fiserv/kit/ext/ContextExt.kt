@@ -1,4 +1,4 @@
-package com.fiserv.mobiliti_ocr.ext
+package com.fiserv.kit.ext
 
 import android.accounts.AccountManager
 import android.app.*

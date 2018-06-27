@@ -1,4 +1,4 @@
-package com.fiserv.mobiliti_ocr.utils
+package com.fiserv.kit.utils
 
 import android.os.Build
 import android.support.annotation.RequiresApi

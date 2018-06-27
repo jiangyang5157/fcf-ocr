@@ -1,4 +1,4 @@
-package com.fiserv.mobiliti_ocr.ext
+package com.fiserv.kit.ext
 
 import android.support.annotation.IdRes
 import android.support.v4.app.Fragment

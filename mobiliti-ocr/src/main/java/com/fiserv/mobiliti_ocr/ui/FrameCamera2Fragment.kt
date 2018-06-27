@@ -16,9 +16,9 @@ import android.util.Log
 import android.util.Size
 import android.util.SparseIntArray
 import android.view.*
-import com.fiserv.mobiliti_ocr.ext.cameraManager
-import com.fiserv.mobiliti_ocr.utils.CompareSizesByArea
-import com.fiserv.mobiliti_ocr.widget.AutoFitTextureView
+import com.fiserv.kit.ext.cameraManager
+import com.fiserv.kit.utils.CompareSizesByArea
+import com.fiserv.kit.widget.AutoFitTextureView
 import java.util.*
 import java.util.concurrent.Semaphore
 import java.util.concurrent.TimeUnit

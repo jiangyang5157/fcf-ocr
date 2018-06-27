@@ -1,4 +1,4 @@
-package com.fiserv.mobiliti_ocr.render
+package com.fiserv.kit.render
 
 interface Renderable<in T> {
 

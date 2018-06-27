@@ -3,8 +3,8 @@ package com.fiserv.fcf.ui
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import com.fiserv.fcf.R
-import com.fiserv.mobiliti_ocr.ext.instance
-import com.fiserv.mobiliti_ocr.ext.replaceFragmentInActivity
+import com.fiserv.kit.ext.instance
+import com.fiserv.kit.ext.replaceFragmentInActivity
 
 class MainActivity : AppCompatActivity() {
 

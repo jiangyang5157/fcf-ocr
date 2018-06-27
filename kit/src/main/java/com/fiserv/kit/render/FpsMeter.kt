@@ -1,6 +1,6 @@
-package com.fiserv.mobiliti_ocr.render
+package com.fiserv.kit.render
 
-import com.fiserv.mobiliti_ocr.utils.TimeUnit
+import com.fiserv.kit.utils.TimeUnit
 
 class FpsMeter(fps: Int = 0) {
 
