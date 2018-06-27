@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <FrameLayout
+        android:id="@+id/camera_container"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
+
+    <com.fiserv.mobiliti_ocr.widget.overlay.OverlayView
+        android:id="@+id/view_overlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_alignBottom="@id/camera_container"
+        android:layout_alignEnd="@id/camera_container"
+        android:layout_alignStart="@id/camera_container"
+        android:layout_alignTop="@id/camera_container" />
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@+id/camera_container">
+
+        <Button
+            android:id="@+id/btn_debug"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:text="debug" />
+    </FrameLayout>
+
+</RelativeLayout>
