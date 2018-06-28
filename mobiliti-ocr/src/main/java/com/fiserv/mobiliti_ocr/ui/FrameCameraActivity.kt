@@ -53,25 +53,22 @@ class FrameCameraActivity : AppCompatActivity(), FrameCamera2Fragment.Callback, 
     private var mDesiredHeight = 0
     private var mPreviewWidth = 0
     private var mPreviewHeight = 0
+    private var mCroppedWidth = 0
+    private var mCroppedHeight = 0
 
     private var mFrameBytes: IntArray? = null
     private var mFrameBitmap: Bitmap? = null
-
-    private var mCroppedWidth = 0
-    private var mCroppedHeight = 0
     private var mCroppedBitmap: Bitmap? = null
-
     private var mFrame2Crop: Matrix? = null
     private var mCrop2Frame: Matrix? = null
 
+    private val mImageProcessingRate = FpsMeter()
+    private var mIsProcessingFrame = false
     private val mYuvBytes = arrayOfNulls<ByteArray?>(3)
     private var mImageConverter: Runnable? = null
     private var mImageCloser: Runnable? = null
-    private var mIsProcessingFrame = false
-    private val mImageProcessingRate = FpsMeter()
 
     private var mOverlayView: OverlayView? = null
-
     private var mDebugText: OText? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
