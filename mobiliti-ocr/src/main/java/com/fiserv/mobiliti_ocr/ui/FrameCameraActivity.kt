@@ -21,6 +21,7 @@ import com.fiserv.kit.ext.instance
 import com.fiserv.kit.ext.replaceFragmentInActivity
 import com.fiserv.kit.render.FpsMeter
 import com.fiserv.kit.render.Renderable
+import com.fiserv.mobiliti_ocr.proc.Frameproc
 import com.fiserv.mobiliti_ocr.proc.Imgproc
 import com.fiserv.mobiliti_ocr.widget.overlay.OText
 import com.fiserv.mobiliti_ocr.widget.overlay.OverlayView
@@ -36,12 +37,15 @@ class FrameCameraActivity : AppCompatActivity(), FrameCamera2Fragment.Callback, 
         const val KEY_CAMERA_DESIRED_HEIGHT = "KEY_CAMERA_DESIRED_HEIGHT"
         const val DEFAULT_CAMERA_DESIRED_WIDTH = 640
         const val DEFAULT_CAMERA_DESIRED_HEIGHT = 480
+    }
 
-        // Cropped size: cropped size for each frame
-        const val KEY_CROPPED_WIDTH = "KEY_CROPPED_WIDTH"
-        const val KEY_CROPPED_HEIGHT = "KEY_CROPPED_HEIGHT"
-        const val DEFAULT_CROPPED_WIDTH = 320
-        const val DEFAULT_CROPPED_HEIGHT = 320
+    internal interface FrameCropper {
+
+        /**
+         * Crop size for each frame
+         */
+        fun getCroppedSize(previewWidth: Int, previewHeight: Int): Size
+
     }
 
     private var mBackgroundHandler: Handler? = null
@@ -53,8 +57,6 @@ class FrameCameraActivity : AppCompatActivity(), FrameCamera2Fragment.Callback, 
     private var mDesiredHeight = 0
     private var mPreviewWidth = 0
     private var mPreviewHeight = 0
-    private var mCroppedWidth = 0
-    private var mCroppedHeight = 0
 
     private var mFrameBytes: IntArray? = null
     private var mFrameBitmap: Bitmap? = null
@@ -70,6 +72,8 @@ class FrameCameraActivity : AppCompatActivity(), FrameCamera2Fragment.Callback, 
 
     private var mOverlayView: OverlayView? = null
     private var mDebugText: OText? = null
+
+    private val mFrameCropper = Frameproc()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(null)
@@ -91,13 +95,9 @@ class FrameCameraActivity : AppCompatActivity(), FrameCamera2Fragment.Callback, 
         if (intent.extras == null) {
             mDesiredWidth = DEFAULT_CAMERA_DESIRED_WIDTH
             mDesiredHeight = DEFAULT_CAMERA_DESIRED_HEIGHT
-            mCroppedWidth = DEFAULT_CROPPED_WIDTH
-            mCroppedHeight = DEFAULT_CROPPED_HEIGHT
         } else {
             mDesiredWidth = intent.extras.getInt(KEY_CAMERA_DESIRED_WIDTH, DEFAULT_CAMERA_DESIRED_WIDTH)
             mDesiredHeight = intent.extras.getInt(KEY_CAMERA_DESIRED_HEIGHT, DEFAULT_CAMERA_DESIRED_HEIGHT)
-            mCroppedWidth = intent.extras.getInt(KEY_CROPPED_WIDTH, DEFAULT_CROPPED_WIDTH)
-            mCroppedHeight = intent.extras.getInt(KEY_CROPPED_HEIGHT, DEFAULT_CROPPED_HEIGHT)
         }
 
         val camera2Fragment = instance<FrameCamera2Fragment>(Bundle().apply {
@@ -225,10 +225,14 @@ class FrameCameraActivity : AppCompatActivity(), FrameCamera2Fragment.Callback, 
         mFrameBitmap = Bitmap.createBitmap(
                 mPreviewWidth, mPreviewHeight, Bitmap.Config.ARGB_8888)
 
+        val croppedSize = mFrameCropper.getCroppedSize(mPreviewWidth, mPreviewHeight)
+        val croppedWidth = croppedSize.width
+        val croppedHeight = croppedSize.height
+
         mCroppedBitmap = Bitmap.createBitmap(
-                mCroppedWidth, mCroppedHeight, Bitmap.Config.ARGB_8888)
+                croppedWidth, croppedHeight, Bitmap.Config.ARGB_8888)
         mFrame2Crop = Imgproc.getTransformationMatrix(
-                mPreviewWidth, mPreviewHeight, mCroppedWidth, mCroppedHeight, rotation, true)
+                mPreviewWidth, mPreviewHeight, croppedWidth, croppedHeight, rotation, true)
 
         mCrop2Frame = Matrix()
         mFrame2Crop?.invert(mCrop2Frame)
@@ -241,7 +245,7 @@ class FrameCameraActivity : AppCompatActivity(), FrameCamera2Fragment.Callback, 
                     lines.add("Image Processing Rate: ${mImageProcessingRate.fpsRealTime}")
                     lines.add("View Size: ${mViewWidth}x$mViewHeight")
                     lines.add("Preview Size: ${mPreviewWidth}x$mPreviewHeight")
-                    lines.add("Cropped Image Size: ${mCroppedWidth}x$mCroppedHeight")
+                    lines.add("Cropped Image Size: ${croppedWidth}x$croppedHeight")
                     onRender(t)
                 }
             }
