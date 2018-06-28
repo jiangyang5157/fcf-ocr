@@ -49,8 +49,8 @@ class FrameCameraActivity : AppCompatActivity(), FrameCamera2Fragment.Callback, 
 
     private var mViewWidth = 0
     private var mViewHeight = 0
-
-    private lateinit var mDesiredSize: Size
+    private var mDesiredWidth = 0
+    private var mDesiredHeight = 0
     private var mPreviewWidth = 0
     private var mPreviewHeight = 0
 
@@ -92,20 +92,20 @@ class FrameCameraActivity : AppCompatActivity(), FrameCamera2Fragment.Callback, 
         setContentView(R.layout.activity_rgb_camera)
 
         if (intent.extras == null) {
-            mDesiredSize = Size(DEFAULT_CAMERA_DESIRED_WIDTH, DEFAULT_CAMERA_DESIRED_HEIGHT)
+            mDesiredWidth = DEFAULT_CAMERA_DESIRED_WIDTH
+            mDesiredHeight = DEFAULT_CAMERA_DESIRED_HEIGHT
             mCroppedWidth = DEFAULT_CROPPED_WIDTH
             mCroppedHeight = DEFAULT_CROPPED_HEIGHT
         } else {
-            val desiredWidth = intent.extras.getInt(KEY_CAMERA_DESIRED_WIDTH, DEFAULT_CAMERA_DESIRED_WIDTH)
-            val desiredHeight = intent.extras.getInt(KEY_CAMERA_DESIRED_HEIGHT, DEFAULT_CAMERA_DESIRED_HEIGHT)
-            mDesiredSize = Size(desiredWidth, desiredHeight)
+            mDesiredWidth = intent.extras.getInt(KEY_CAMERA_DESIRED_WIDTH, DEFAULT_CAMERA_DESIRED_WIDTH)
+            mDesiredHeight = intent.extras.getInt(KEY_CAMERA_DESIRED_HEIGHT, DEFAULT_CAMERA_DESIRED_HEIGHT)
             mCroppedWidth = intent.extras.getInt(KEY_CROPPED_WIDTH, DEFAULT_CROPPED_WIDTH)
             mCroppedHeight = intent.extras.getInt(KEY_CROPPED_HEIGHT, DEFAULT_CROPPED_HEIGHT)
         }
 
         val camera2Fragment = instance<FrameCamera2Fragment>(Bundle().apply {
             putString(FrameCamera2Fragment.KEY_CAMERA_ID, cameraId)
-            putSize(FrameCamera2Fragment.KEY_DESIRED_SIZE, mDesiredSize)
+            putSize(FrameCamera2Fragment.KEY_DESIRED_SIZE, Size(mDesiredWidth, mDesiredHeight))
         }) as FrameCamera2Fragment
         camera2Fragment.setCallback(this)
         camera2Fragment.setOnImageAvailableListener(this)
