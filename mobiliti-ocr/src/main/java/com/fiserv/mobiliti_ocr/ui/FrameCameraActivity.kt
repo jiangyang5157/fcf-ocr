@@ -21,7 +21,7 @@ import com.fiserv.kit.ext.instance
 import com.fiserv.kit.ext.replaceFragmentInActivity
 import com.fiserv.kit.render.FpsMeter
 import com.fiserv.kit.render.Renderable
-import com.fiserv.mobiliti_ocr.utils.Imgproc
+import com.fiserv.mobiliti_ocr.proc.Imgproc
 import com.fiserv.mobiliti_ocr.widget.overlay.OText
 import com.fiserv.mobiliti_ocr.widget.overlay.OverlayView
 

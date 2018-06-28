@@ -1,11 +1,11 @@
-package com.fiserv.mobiliti_ocr.utils
+package com.fiserv.mobiliti_ocr.proc
 
 import android.graphics.Matrix
 import android.util.Log
 
 object Imgproc {
 
-    private const val TAG = "ImgprocUtils"
+    private const val TAG = "Imgproc"
 
     // It's used to clamp the RGB values before their ranges are normalized to eight bits.
     private const val MAX_K = 262143 // 2 ^ 18 - 1
