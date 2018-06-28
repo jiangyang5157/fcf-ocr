@@ -32,9 +32,15 @@ class MainFragment : Fragment() {
                             .toInt()
                     val desiredPreviewHeight = (findViewById(R.id.et_desired_preview_height) as TextInputEditText).text.trim().toString()
                             .toInt()
+                    val croppedWidth = (findViewById(R.id.et_cropped_width) as TextInputEditText).text.trim().toString()
+                            .toInt()
+                    val croppedHeight = (findViewById(R.id.et_cropped_height) as TextInputEditText).text.trim().toString()
+                            .toInt()
                     activity.startActivity(Intent(context, FrameCameraActivity::class.java).apply {
                         putExtra(FrameCameraActivity.KEY_CAMERA_DESIRED_WIDTH, desiredPreviewWidth)
                         putExtra(FrameCameraActivity.KEY_CAMERA_DESIRED_HEIGHT, desiredPreviewHeight)
+                        putExtra(FrameCameraActivity.KEY_CROPPED_WIDTH, croppedWidth)
+                        putExtra(FrameCameraActivity.KEY_CROPPED_HEIGHT, croppedHeight)
                     })
                 }
             }

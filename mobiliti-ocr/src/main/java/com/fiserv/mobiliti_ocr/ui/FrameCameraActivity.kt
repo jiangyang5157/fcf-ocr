@@ -31,41 +31,48 @@ class FrameCameraActivity : AppCompatActivity(), FrameCamera2Fragment.Callback, 
         const val TAG = "FrameCameraActivity"
         const val TAG_HANDLER_THREAD = "${TAG}_Handler_Thread"
 
+        // Camera desired size: desired size for preview
         const val KEY_CAMERA_DESIRED_WIDTH = "KEY_CAMERA_DESIRED_WIDTH"
         const val KEY_CAMERA_DESIRED_HEIGHT = "KEY_CAMERA_DESIRED_HEIGHT"
-
         const val DEFAULT_CAMERA_DESIRED_WIDTH = 640
         const val DEFAULT_CAMERA_DESIRED_HEIGHT = 480
+
+        // Cropped size: cropped size for each frame
+        const val KEY_CROPPED_WIDTH = "KEY_CROPPED_WIDTH"
+        const val KEY_CROPPED_HEIGHT = "KEY_CROPPED_HEIGHT"
+        const val DEFAULT_CROPPED_WIDTH = 320
+        const val DEFAULT_CROPPED_HEIGHT = 320
     }
 
     private var mBackgroundHandler: Handler? = null
     private var mBackgroundThread: HandlerThread? = null
 
+    private var mViewWidth = 0
+    private var mViewHeight = 0
+
+    private lateinit var mDesiredSize: Size
+    private var mPreviewWidth = 0
+    private var mPreviewHeight = 0
+
+    private var mFrameBytes: IntArray? = null
+    private var mFrameBitmap: Bitmap? = null
+
+    private var mCroppedWidth = 0
+    private var mCroppedHeight = 0
+    private var mCroppedBitmap: Bitmap? = null
+
+    private var mFrame2Crop: Matrix? = null
+    private var mCrop2Frame: Matrix? = null
+
+    private val mYuvBytes = arrayOfNulls<ByteArray?>(3)
     private var mImageConverter: Runnable? = null
     private var mImageCloser: Runnable? = null
     private var mIsProcessingFrame = false
-
-    private lateinit var mDesiredSize: Size
-    private var mViewWidth = 0
-    private var mViewHeight = 0
-    private var mPreviewWidth = 0
-    private var mPreviewHeight = 0
-    private var mFrameBytes: IntArray? = null
-    private var mFrameBitmap: Bitmap? = null
-    private val mYuvBytes = arrayOfNulls<ByteArray?>(3)
-
     private val mImageProcessingRate = FpsMeter()
 
     private var mOverlayView: OverlayView? = null
 
     private var mDebugText: OText? = null
-
-    private val mCroppedWidth = 320
-    private val mCroppedHeight = 320
-    private var mCroppedBitmap: Bitmap? = null
-
-    private var mFrame2Crop: Matrix? = null
-    private var mCrop2Frame: Matrix? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(null)
@@ -84,10 +91,16 @@ class FrameCameraActivity : AppCompatActivity(), FrameCamera2Fragment.Callback, 
 
         setContentView(R.layout.activity_rgb_camera)
 
-        intent.extras?.apply {
-            val w = getInt(KEY_CAMERA_DESIRED_WIDTH, DEFAULT_CAMERA_DESIRED_WIDTH)
-            val h = getInt(KEY_CAMERA_DESIRED_HEIGHT, DEFAULT_CAMERA_DESIRED_HEIGHT)
-            mDesiredSize = Size(w, h)
+        if (intent.extras == null) {
+            mDesiredSize = Size(DEFAULT_CAMERA_DESIRED_WIDTH, DEFAULT_CAMERA_DESIRED_HEIGHT)
+            mCroppedWidth = DEFAULT_CROPPED_WIDTH
+            mCroppedHeight = DEFAULT_CROPPED_HEIGHT
+        } else {
+            val desiredWidth = intent.extras.getInt(KEY_CAMERA_DESIRED_WIDTH, DEFAULT_CAMERA_DESIRED_WIDTH)
+            val desiredHeight = intent.extras.getInt(KEY_CAMERA_DESIRED_HEIGHT, DEFAULT_CAMERA_DESIRED_HEIGHT)
+            mDesiredSize = Size(desiredWidth, desiredHeight)
+            mCroppedWidth = intent.extras.getInt(KEY_CROPPED_WIDTH, DEFAULT_CROPPED_WIDTH)
+            mCroppedHeight = intent.extras.getInt(KEY_CROPPED_HEIGHT, DEFAULT_CROPPED_HEIGHT)
         }
 
         val camera2Fragment = instance<FrameCamera2Fragment>(Bundle().apply {
@@ -223,15 +236,32 @@ class FrameCameraActivity : AppCompatActivity(), FrameCamera2Fragment.Callback, 
         mCrop2Frame = Matrix()
         mFrame2Crop?.invert(mCrop2Frame)
 
+        // #### Debug usage: log text
         mOverlayView?.addRenderable(object : Renderable<Canvas> {
             override fun onRender(t: Canvas) {
-                renderDebug(t)
+                mDebugText?.apply {
+                    lines.clear()
+                    lines.add("Image Processing Rate: ${mImageProcessingRate.fpsRealTime}")
+                    lines.add("View Size: ${mViewWidth}x$mViewHeight")
+                    lines.add("Preview Size: ${mPreviewWidth}x$mPreviewHeight")
+                    lines.add("Cropped Image Size: ${mCroppedWidth}x$mCroppedHeight")
+                    onRender(t)
+                }
             }
         })
 
+        // #### Debug usage: draw cropped image
         mOverlayView?.addRenderable(object : Renderable<Canvas> {
             override fun onRender(t: Canvas) {
-                renderCrop(t)
+                if (mCroppedBitmap != null) {
+                    Bitmap.createBitmap(mCroppedBitmap)?.apply {
+                        val matrix = Matrix()
+                        matrix.postTranslate(
+                                (t.width - this.width).toFloat(),
+                                (t.height - this.height).toFloat())
+                        t.drawBitmap(this, matrix, Paint())
+                    }
+                }
             }
         })
     }
@@ -296,7 +326,6 @@ class FrameCameraActivity : AppCompatActivity(), FrameCamera2Fragment.Callback, 
         Trace.endSection()
     }
 
-    // TODO
     private fun processImage() {
         // gen frame bytes
         mImageConverter?.run()
@@ -312,29 +341,6 @@ class FrameCameraActivity : AppCompatActivity(), FrameCamera2Fragment.Callback, 
 
         // close image
         mImageCloser?.run()
-    }
-
-    private fun renderDebug(t: Canvas) {
-        mDebugText?.apply {
-            lines.clear()
-            lines.add("Image Processing Rate: ${mImageProcessingRate.fpsRealTime}")
-            lines.add("View Size: ${mViewWidth}x$mViewHeight")
-            lines.add("Preview Size: ${mPreviewWidth}x$mPreviewHeight")
-            lines.add("Cropped Image Size: ${mCroppedWidth}x$mCroppedHeight")
-            onRender(t)
-        }
-    }
-
-    private fun renderCrop(canvas: Canvas) {
-        if (mCroppedBitmap != null) {
-            Bitmap.createBitmap(mCroppedBitmap)?.apply {
-                val matrix = Matrix()
-                matrix.postTranslate(
-                        (canvas.width - this.width).toFloat(),
-                        (canvas.height - this.height).toFloat())
-                canvas.drawBitmap(this, matrix, Paint())
-            }
-        }
     }
 
 }
