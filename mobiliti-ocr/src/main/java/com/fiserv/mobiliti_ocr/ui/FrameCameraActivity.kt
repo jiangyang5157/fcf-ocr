@@ -2,7 +2,6 @@ package com.fiserv.mobiliti_ocr.ui
 
 import android.Manifest
 import android.content.pm.PackageManager
-import android.graphics.*
 import android.hardware.camera2.CameraAccessException
 import android.hardware.camera2.CameraCharacteristics
 import android.media.ImageReader
@@ -20,49 +19,45 @@ import com.fiserv.kit.ext.cameraManager
 import com.fiserv.kit.ext.instance
 import com.fiserv.kit.ext.replaceFragmentInActivity
 import com.fiserv.kit.render.FpsMeter
-import com.fiserv.kit.render.Renderable
 import com.fiserv.mobiliti_ocr.proc.Frameproc
 import com.fiserv.mobiliti_ocr.proc.Imgproc
-import com.fiserv.mobiliti_ocr.widget.overlay.OText
 import com.fiserv.mobiliti_ocr.widget.overlay.OverlayView
 
-class FrameCameraActivity : AppCompatActivity(), FrameCamera2Fragment.Callback, ImageReader.OnImageAvailableListener {
+class FrameCameraActivity : AppCompatActivity(),
+        FrameCamera2Fragment.ViewSizeListener,
+        FrameCamera2Fragment.PreviewSizeListener,
+        ImageReader.OnImageAvailableListener {
 
     companion object {
         const val TAG = "FrameCameraActivity"
         const val TAG_HANDLER_THREAD = "${TAG}_Handler_Thread"
 
-        // Camera desired size: desired size for preview
+        /**
+         * Desired camera preview size for [com.fiserv.mobiliti_ocr.ui.FrameCamera2Fragment.chooseOptimalSize]
+         */
         const val KEY_CAMERA_DESIRED_WIDTH = "KEY_CAMERA_DESIRED_WIDTH"
         const val KEY_CAMERA_DESIRED_HEIGHT = "KEY_CAMERA_DESIRED_HEIGHT"
         const val DEFAULT_CAMERA_DESIRED_WIDTH = 640
         const val DEFAULT_CAMERA_DESIRED_HEIGHT = 480
     }
 
-    internal interface FrameCropper {
+    internal interface FrameCropper : FrameCamera2Fragment.ViewSizeListener, FrameCamera2Fragment.PreviewSizeListener {
 
-        /**
-         * Crop size for each frame
-         */
-        fun getCroppedSize(previewWidth: Int, previewHeight: Int): Size
+        fun onRelease()
+
+        fun onOverlayViewCreated(view: OverlayView)
+
+        fun onNewFrame(mFrameBytes: IntArray, fps: Int)
 
     }
 
     private var mBackgroundHandler: Handler? = null
     private var mBackgroundThread: HandlerThread? = null
 
-    private var mViewWidth = 0
-    private var mViewHeight = 0
-    private var mDesiredWidth = 0
-    private var mDesiredHeight = 0
     private var mPreviewWidth = 0
     private var mPreviewHeight = 0
 
     private var mFrameBytes: IntArray? = null
-    private var mFrameBitmap: Bitmap? = null
-    private var mCroppedBitmap: Bitmap? = null
-    private var mFrame2Crop: Matrix? = null
-    private var mCrop2Frame: Matrix? = null
 
     private val mImageProcessingRate = FpsMeter()
     private var mIsProcessingFrame = false
@@ -71,7 +66,6 @@ class FrameCameraActivity : AppCompatActivity(), FrameCamera2Fragment.Callback, 
     private var mImageCloser: Runnable? = null
 
     private var mOverlayView: OverlayView? = null
-    private var mDebugText: OText? = null
 
     private val mFrameCropper = Frameproc()
 
@@ -92,29 +86,32 @@ class FrameCameraActivity : AppCompatActivity(), FrameCamera2Fragment.Callback, 
 
         setContentView(R.layout.activity_rgb_camera)
 
+        val desiredWidth: Int
+        val desiredHeight: Int
         if (intent.extras == null) {
-            mDesiredWidth = DEFAULT_CAMERA_DESIRED_WIDTH
-            mDesiredHeight = DEFAULT_CAMERA_DESIRED_HEIGHT
+            desiredWidth = DEFAULT_CAMERA_DESIRED_WIDTH
+            desiredHeight = DEFAULT_CAMERA_DESIRED_HEIGHT
         } else {
-            mDesiredWidth = intent.extras.getInt(KEY_CAMERA_DESIRED_WIDTH, DEFAULT_CAMERA_DESIRED_WIDTH)
-            mDesiredHeight = intent.extras.getInt(KEY_CAMERA_DESIRED_HEIGHT, DEFAULT_CAMERA_DESIRED_HEIGHT)
+            desiredWidth = intent.extras.getInt(KEY_CAMERA_DESIRED_WIDTH, DEFAULT_CAMERA_DESIRED_WIDTH)
+            desiredHeight = intent.extras.getInt(KEY_CAMERA_DESIRED_HEIGHT, DEFAULT_CAMERA_DESIRED_HEIGHT)
         }
 
         val camera2Fragment = instance<FrameCamera2Fragment>(Bundle().apply {
             putString(FrameCamera2Fragment.KEY_CAMERA_ID, cameraId)
-            putSize(FrameCamera2Fragment.KEY_DESIRED_SIZE, Size(mDesiredWidth, mDesiredHeight))
+            putSize(FrameCamera2Fragment.KEY_DESIRED_SIZE, Size(desiredWidth, desiredHeight))
         }) as FrameCamera2Fragment
-        camera2Fragment.setCallback(this)
+        camera2Fragment.setViewSizeListener(this)
+        camera2Fragment.setPreviewSizeListener(this)
         camera2Fragment.setOnImageAvailableListener(this)
         replaceFragmentInActivity(R.id.camera_container, camera2Fragment)
 
-        mOverlayView = findViewById(R.id.view_overlay) as OverlayView?
+        mOverlayView = findViewById(R.id.view_overlay) as OverlayView
+        mFrameCropper.onOverlayViewCreated(mOverlayView!!)
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        mFrameBitmap?.recycle()
-        mCroppedBitmap?.recycle()
+        mFrameCropper.onRelease()
     }
 
     private fun hasPermission(): Boolean {
@@ -206,65 +203,17 @@ class FrameCameraActivity : AppCompatActivity(), FrameCamera2Fragment.Callback, 
         super.onPause()
     }
 
-    override fun onViewSizeChanged(viewWidth: Int, viewHeight: Int) {
-        Log.d(TAG, "onViewSizeChanged: $viewWidth")
-        mViewWidth = viewWidth
-        mViewHeight = viewHeight
-        mDebugText = OText(size = 40f, color = Color.RED, x = 20f, y = viewHeight.toFloat() - 20)
+    override fun onViewSizeChanged(w: Int, h: Int) {
+        Log.d(TAG, "onViewSizeChanged: $w")
+        mFrameCropper.onViewSizeChanged(w, h)
     }
 
-    override fun onPreviewSizeChosen(previewSize: Size, cameraRotation: Int, screenRotation: Int) {
-        Log.d(TAG, "onPreviewSizeChosen: $previewSize")
-        mPreviewWidth = previewSize.width
-        mPreviewHeight = previewSize.height
-
-        val rotation = cameraRotation - screenRotation
-        Log.d(TAG, "Camera orientation relative to screen canvas: $rotation")
-
+    override fun onPreviewSizeChosen(size: Size, cameraRotation: Int, screenRotation: Int) {
+        Log.d(TAG, "onPreviewSizeChosen: $size")
+        mPreviewWidth = size.width
+        mPreviewHeight = size.height
         mFrameBytes = IntArray(mPreviewWidth * mPreviewHeight)
-        mFrameBitmap = Bitmap.createBitmap(
-                mPreviewWidth, mPreviewHeight, Bitmap.Config.ARGB_8888)
-
-        val croppedSize = mFrameCropper.getCroppedSize(mPreviewWidth, mPreviewHeight)
-        val croppedWidth = croppedSize.width
-        val croppedHeight = croppedSize.height
-
-        mCroppedBitmap = Bitmap.createBitmap(
-                croppedWidth, croppedHeight, Bitmap.Config.ARGB_8888)
-        mFrame2Crop = Imgproc.getTransformationMatrix(
-                mPreviewWidth, mPreviewHeight, croppedWidth, croppedHeight, rotation, true)
-
-        mCrop2Frame = Matrix()
-        mFrame2Crop?.invert(mCrop2Frame)
-
-        // #### Debug usage: log text
-        mOverlayView?.addRenderable(object : Renderable<Canvas> {
-            override fun onRender(t: Canvas) {
-                mDebugText?.apply {
-                    lines.clear()
-                    lines.add("Image Processing Rate: ${mImageProcessingRate.fpsRealTime}")
-                    lines.add("View Size: ${mViewWidth}x$mViewHeight")
-                    lines.add("Preview Size: ${mPreviewWidth}x$mPreviewHeight")
-                    lines.add("Cropped Image Size: ${croppedWidth}x$croppedHeight")
-                    onRender(t)
-                }
-            }
-        })
-
-        // #### Debug usage: draw cropped image
-        mOverlayView?.addRenderable(object : Renderable<Canvas> {
-            override fun onRender(t: Canvas) {
-                if (mCroppedBitmap != null) {
-                    Bitmap.createBitmap(mCroppedBitmap)?.apply {
-                        val matrix = Matrix()
-                        matrix.postTranslate(
-                                (t.width - this.width).toFloat(),
-                                (t.height - this.height).toFloat())
-                        t.drawBitmap(this, matrix, Paint())
-                    }
-                }
-            }
-        })
+        mFrameCropper.onPreviewSizeChosen(size, cameraRotation, screenRotation)
     }
 
     override fun onImageAvailable(reader: ImageReader?) {
@@ -283,7 +232,7 @@ class FrameCameraActivity : AppCompatActivity(), FrameCamera2Fragment.Callback, 
                 return
             }
 
-            Trace.beginSection("imageAvailable")
+            Trace.beginSection("Accepted Available Image")
             mIsProcessingFrame = true
 
             val planes = image.planes
@@ -331,11 +280,7 @@ class FrameCameraActivity : AppCompatActivity(), FrameCamera2Fragment.Callback, 
         // gen frame bytes
         mImageConverter?.run()
 
-        // gen frame bitmap
-        mFrameBitmap?.setPixels(mFrameBytes, 0, mPreviewWidth, 0, 0, mPreviewWidth, mPreviewHeight)
-
-        // gen cropped frame bitmap
-        Canvas(mCroppedBitmap).drawBitmap(mFrameBitmap, mFrame2Crop, null)
+        mFrameCropper.onNewFrame(mFrameBytes!!, mImageProcessingRate.fpsRealTime)
 
         // draw overlays
         mOverlayView?.postInvalidate()
@@ -343,5 +288,4 @@ class FrameCameraActivity : AppCompatActivity(), FrameCamera2Fragment.Callback, 
         // close image
         mImageCloser?.run()
     }
-
 }

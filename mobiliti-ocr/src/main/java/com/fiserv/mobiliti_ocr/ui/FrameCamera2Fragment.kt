@@ -33,9 +33,12 @@ class FrameCamera2Fragment : Fragment() {
         const val KEY_DESIRED_SIZE = "KEY_DESIRED_SIZE"
     }
 
-    interface Callback {
-        fun onViewSizeChanged(viewWidth: Int, viewHeight: Int)
-        fun onPreviewSizeChosen(previewSize: Size, cameraRotation: Int, screenRotation: Int)
+    internal interface ViewSizeListener {
+        fun onViewSizeChanged(w: Int, h: Int)
+    }
+
+    internal interface PreviewSizeListener {
+        fun onPreviewSizeChosen(size: Size, cameraRotation: Int, screenRotation: Int)
     }
 
     /**
@@ -53,7 +56,8 @@ class FrameCamera2Fragment : Fragment() {
     private var mBackgroundHandler: Handler? = null
     private var mBackgroundThread: HandlerThread? = null
 
-    private var mCallback: Callback? = null
+    private var mViewSizeListener: ViewSizeListener? = null
+    private var mPreviewSizeListener: PreviewSizeListener? = null
     private var mOnImageAvailableListener: ImageReader.OnImageAvailableListener? = null
 
     private val mCameraOpenCloseLock = Semaphore(1)
@@ -86,7 +90,7 @@ class FrameCamera2Fragment : Fragment() {
 
         override fun onSurfaceTextureSizeChanged(texture: SurfaceTexture, width: Int, height: Int) {
             configureTransform(width, height)
-            mCallback?.onViewSizeChanged(width, height)
+            mViewSizeListener?.onViewSizeChanged(width, height)
         }
 
         override fun onSurfaceTextureDestroyed(texture: SurfaceTexture): Boolean {
@@ -308,7 +312,7 @@ class FrameCamera2Fragment : Fragment() {
                 } else {
                     mAutoFitTextureView.setAspectRatio(height, width)
                 }
-                mCallback?.onPreviewSizeChosen(
+                mPreviewSizeListener?.onPreviewSizeChosen(
                         this, getCameraRotation(characteristics), getScreenRotation())
             }
         } catch (e: CameraAccessException) {
@@ -420,8 +424,12 @@ class FrameCamera2Fragment : Fragment() {
         return mCameraId
     }
 
-    fun setCallback(callback: Callback) {
-        mCallback = callback
+    internal fun setViewSizeListener(viewSizeListener: ViewSizeListener) {
+        mViewSizeListener = viewSizeListener
+    }
+
+    internal fun setPreviewSizeListener(previewSizeListener: PreviewSizeListener) {
+        mPreviewSizeListener = previewSizeListener
     }
 
     fun setOnImageAvailableListener(onImageAvailableListener: ImageReader.OnImageAvailableListener) {
