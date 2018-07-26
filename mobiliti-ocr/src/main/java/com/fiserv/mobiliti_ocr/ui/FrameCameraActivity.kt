@@ -22,6 +22,7 @@ import com.fiserv.kit.render.FpsMeter
 import com.fiserv.mobiliti_ocr.proc.Frameproc
 import com.fiserv.mobiliti_ocr.proc.Imgproc
 import com.fiserv.mobiliti_ocr.widget.overlay.OverlayView
+import org.opencv.android.OpenCVLoader
 
 class FrameCameraActivity : AppCompatActivity(),
         FrameCamera2Fragment.ViewSizeListener,
@@ -39,6 +40,14 @@ class FrameCameraActivity : AppCompatActivity(),
         const val KEY_CAMERA_DESIRED_HEIGHT = "KEY_CAMERA_DESIRED_HEIGHT"
         const val DEFAULT_CAMERA_DESIRED_WIDTH = 640
         const val DEFAULT_CAMERA_DESIRED_HEIGHT = 480
+
+        init {
+            if (OpenCVLoader.initDebug()) {
+                Log.d(TAG, "Initialization of OpenCV was successful")
+            } else {
+                Log.d(TAG, "Initialization of OpenCV was failed")
+            }
+        }
     }
 
     internal interface FrameCropper : FrameCamera2Fragment.ViewSizeListener, FrameCamera2Fragment.PreviewSizeListener {
