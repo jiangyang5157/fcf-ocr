@@ -66,7 +66,7 @@ class FrameCameraActivity : AppCompatActivity(),
     private var mPreviewWidth = 0
     private var mPreviewHeight = 0
 
-    private var mFrameBytes: IntArray? = null
+    private var mFrameInts: IntArray? = null
 
     private val mImageProcessingRate = FpsMeter()
     private var mIsProcessingFrame = false
@@ -221,7 +221,7 @@ class FrameCameraActivity : AppCompatActivity(),
         Log.d(TAG, "onPreviewSizeChosen: $size")
         mPreviewWidth = size.width
         mPreviewHeight = size.height
-        mFrameBytes = IntArray(mPreviewWidth * mPreviewHeight)
+        mFrameInts = IntArray(mPreviewWidth * mPreviewHeight)
         mFrameCropper.onPreviewSizeChosen(size, cameraRotation, screenRotation)
     }
 
@@ -268,7 +268,7 @@ class FrameCameraActivity : AppCompatActivity(),
                         yRowStride,
                         uvRowStride,
                         uvPixelStride,
-                        mFrameBytes!!)
+                        mFrameInts!!)
             }
 
             mImageCloser = Runnable {
@@ -289,7 +289,7 @@ class FrameCameraActivity : AppCompatActivity(),
         // gen frame bytes
         mImageConverter?.run()
 
-        mFrameCropper.onNewFrame(mFrameBytes!!, mImageProcessingRate.fpsRealTime)
+        mFrameCropper.onNewFrame(mFrameInts!!, mImageProcessingRate.fpsRealTime)
 
         // draw overlays
         mOverlayView?.postInvalidate()

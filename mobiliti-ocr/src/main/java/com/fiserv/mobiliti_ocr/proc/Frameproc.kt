@@ -7,6 +7,7 @@ import com.fiserv.kit.render.Renderable
 import com.fiserv.mobiliti_ocr.ui.FrameCameraActivity
 import com.fiserv.mobiliti_ocr.widget.overlay.OText
 import com.fiserv.mobiliti_ocr.widget.overlay.OverlayView
+import org.opencv.core.MatOfInt
 
 class Frameproc : FrameCameraActivity.FrameCropper {
 
@@ -39,6 +40,8 @@ class Frameproc : FrameCameraActivity.FrameCropper {
     private var mCroppedBitmap: Bitmap? = null
     private var mFrame2Crop: Matrix? = null
     private var mCrop2Frame: Matrix? = null
+
+    private var mCroppedInts: IntArray? = null
 
     private var mFps = 0
 
@@ -74,6 +77,7 @@ class Frameproc : FrameCameraActivity.FrameCropper {
         mCrop2Frame = Matrix()
         mFrame2Crop?.invert(mCrop2Frame)
 
+        mCroppedInts = IntArray(mCroppedWidth * mCroppedHeight)
     }
 
     override fun onOverlayViewCreated(view: OverlayView) {
@@ -108,15 +112,19 @@ class Frameproc : FrameCameraActivity.FrameCropper {
         })
     }
 
-    override fun onNewFrame(mFrameBytes: IntArray, fps: Int) {
+    override fun onNewFrame(frameInts: IntArray, fps: Int) {
         mFps = fps
 
         // gen frame bitmap
-        mFrameBitmap?.setPixels(mFrameBytes, 0, mPreviewWidth, 0, 0, mPreviewWidth, mPreviewHeight)
+        mFrameBitmap?.setPixels(frameInts, 0, mPreviewWidth, 0, 0, mPreviewWidth, mPreviewHeight)
 
-        // gen cropped frame bitmap
+        // gen cropped bitmap
         Canvas(mCroppedBitmap).drawBitmap(mFrameBitmap, mFrame2Crop, null)
 
+        // gen cropped Ints
+        mCroppedBitmap?.getPixels(mCroppedInts, 0, mCroppedWidth, 0, 0, mCroppedWidth, mCroppedHeight)
+
+//        val mat = MatOfInt(*mCroppedInts!!)
     }
 
 }
