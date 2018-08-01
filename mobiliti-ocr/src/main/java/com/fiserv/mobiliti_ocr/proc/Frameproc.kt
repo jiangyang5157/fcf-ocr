@@ -7,6 +7,9 @@ import com.fiserv.kit.render.Renderable
 import com.fiserv.mobiliti_ocr.ui.FrameCameraActivity
 import com.fiserv.mobiliti_ocr.widget.overlay.OText
 import com.fiserv.mobiliti_ocr.widget.overlay.OverlayView
+import com.gmail.jiangyang5157.sudoku.widget.scan.imgproc.GaussianBlur
+import org.opencv.android.Utils
+import org.opencv.core.Core
 import org.opencv.core.MatOfInt
 
 class Frameproc : FrameCameraActivity.FrameCropper {
@@ -124,7 +127,16 @@ class Frameproc : FrameCameraActivity.FrameCropper {
         // gen cropped Ints
         mCroppedBitmap?.getPixels(mCroppedInts, 0, mCroppedWidth, 0, 0, mCroppedWidth, mCroppedHeight)
 
-//        val mat = MatOfInt(*mCroppedInts!!)
+        //
+        var curr = MatOfInt(*mCroppedInts!!)
+
+        val mGaussianBlur = GaussianBlur(5.0, 5.0, 0.0, 0.0, Core.BORDER_DEFAULT)
+        val dst = MatOfInt()
+        mGaussianBlur.convert(curr, dst)
+        curr.release()
+        curr = dst
+
+        Utils.matToBitmap(curr, mCroppedBitmap)
     }
 
 }

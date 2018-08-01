@@ -31,6 +31,8 @@ class FrameCamera2Fragment : Fragment() {
 
         const val KEY_CAMERA_ID = "KEY_CAMERA_ID"
         const val KEY_DESIRED_SIZE = "KEY_DESIRED_SIZE"
+
+        const val IMAGE_FORMAT = ImageFormat.YUV_420_888
     }
 
     internal interface ViewSizeListener {
@@ -159,7 +161,7 @@ class FrameCamera2Fragment : Fragment() {
 
             // Create the reader for the preview frames.
             mPreviewReader = ImageReader.newInstance(
-                    mPreviewSize.width, mPreviewSize.height, ImageFormat.YUV_420_888, 2)
+                    mPreviewSize.width, mPreviewSize.height, IMAGE_FORMAT, 2)
 
             mPreviewReader?.setOnImageAvailableListener(mOnImageAvailableListener, mBackgroundHandler)
             mPreviewRequestBuilder?.addTarget(mPreviewReader?.surface)

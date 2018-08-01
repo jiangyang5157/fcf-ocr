@@ -56,7 +56,7 @@ class FrameCameraActivity : AppCompatActivity(),
 
         fun onOverlayViewCreated(view: OverlayView)
 
-        fun onNewFrame(mFrameBytes: IntArray, fps: Int)
+        fun onNewFrame(frameInts: IntArray, fps: Int)
 
     }
 
