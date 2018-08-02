@@ -136,7 +136,8 @@ class FrameCameraActivity : AppCompatActivity(),
     private fun isCamera2Supported(characteristics: CameraCharacteristics): Boolean {
         val facing = characteristics.get(CameraCharacteristics.LENS_FACING)
         return facing == CameraCharacteristics.LENS_FACING_EXTERNAL
-                || isHardwareLevelSupported(characteristics, CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL_FULL)
+//                || isHardwareLevelSupported(characteristics, CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL_FULL)
+                || isHardwareLevelSupported(characteristics, CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL_LIMITED)
     }
 
     private fun isFrontCamera(characteristics: CameraCharacteristics): Boolean {

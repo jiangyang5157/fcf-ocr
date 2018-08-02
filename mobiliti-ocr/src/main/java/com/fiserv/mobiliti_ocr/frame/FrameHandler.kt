@@ -4,13 +4,14 @@ import android.graphics.*
 import android.util.Log
 import android.util.Size
 import com.fiserv.kit.render.Renderable
-import com.fiserv.mobiliti_ocr.proc.Imgproc
 import com.fiserv.mobiliti_ocr.ui.FrameCameraActivity
 import com.fiserv.mobiliti_ocr.widget.overlay.OText
 import com.fiserv.mobiliti_ocr.widget.overlay.OverlayView
+import com.gmail.jiangyang5157.sudoku.widget.scan.imgproc.Gray2Rgb
 import org.opencv.android.Utils
 import org.opencv.core.CvType
 import org.opencv.core.Mat
+import org.opencv.imgproc.Imgproc
 import java.nio.ByteBuffer
 
 class FrameHandler : FrameCameraActivity.FrameCropper {
@@ -78,13 +79,79 @@ class FrameHandler : FrameCameraActivity.FrameCropper {
 
         mCroppedBitmap = Bitmap.createBitmap(
                 mCroppedWidth, mCroppedHeight, Bitmap.Config.ARGB_8888)
-        mFrame2Crop = Imgproc.getTransformationMatrix(
+        mFrame2Crop = getTransformationMatrix(
                 mPreviewWidth, mPreviewHeight, mCroppedWidth, mCroppedHeight, rotation, true)
 
         mCrop2Frame = Matrix()
         mFrame2Crop?.invert(mCrop2Frame)
 
         mCroppedInts = IntArray(mCroppedWidth * mCroppedHeight)
+    }
+
+    /**
+     * Returns a transformation matrix from one reference frame into another.
+     * Handles cropping (if maintaining aspect ratio is desired) and rotation.
+     *
+     * @param srcWidth            Width of source frame.
+     * @param srcHeight           Height of source frame.
+     * @param dstWidth            Width of destination frame.
+     * @param dstHeight           Height of destination frame.
+     * @param applyRotation       Amount of rotation to apply from one frame to another.
+     * Must be a multiple of 90.
+     * @param maintainAspectRatio If true, will ensure that scaling in x and y remains constant,
+     * cropping the image if necessary.
+     * @return The transformation fulfilling the desired requirements.
+     */
+    fun getTransformationMatrix(
+            srcWidth: Int,
+            srcHeight: Int,
+            dstWidth: Int,
+            dstHeight: Int,
+            applyRotation: Int,
+            maintainAspectRatio: Boolean): Matrix {
+
+        val matrix = Matrix()
+        if (applyRotation != 0) {
+            if (applyRotation % 90 != 0) {
+                Log.w(TAG, "Rotation of $applyRotation % 90 != 0")
+            }
+
+            // Translate so center of image is at origin.
+            matrix.postTranslate(-srcWidth / 2.0f, -srcHeight / 2.0f)
+
+            // Rotate around origin.
+            matrix.postRotate(applyRotation.toFloat())
+        }
+
+        // Account for the already applied rotation, if any, and then determine how
+        // much scaling is needed for each axis.
+        val transpose = (Math.abs(applyRotation) + 90) % 180 == 0
+
+        val inWidth = if (transpose) srcHeight else srcWidth
+        val inHeight = if (transpose) srcWidth else srcHeight
+
+        // Apply scaling if necessary.
+        if (inWidth != dstWidth || inHeight != dstHeight) {
+            val scaleFactorX = dstWidth / inWidth.toFloat()
+            val scaleFactorY = dstHeight / inHeight.toFloat()
+
+            if (maintainAspectRatio) {
+                // Scale by minimum factor so that dst is filled completely while
+                // maintaining the aspect ratio. Some image may fall off the edge.
+                val scaleFactor = Math.max(scaleFactorX, scaleFactorY)
+                matrix.postScale(scaleFactor, scaleFactor)
+            } else {
+                // Scale exactly to fill dst from src.
+                matrix.postScale(scaleFactorX, scaleFactorY)
+            }
+        }
+
+        if (applyRotation != 0) {
+            // Translate back from origin centered reference to destination frame.
+            matrix.postTranslate(dstWidth / 2.0f, dstHeight / 2.0f)
+        }
+
+        return matrix
     }
 
     override fun onOverlayViewCreated(view: OverlayView) {
@@ -122,24 +189,77 @@ class FrameHandler : FrameCameraActivity.FrameCropper {
     override fun onNewFrame(planes: Array<ByteBuffer?>, fps: Int) {
         mFps = fps
 
-        var yuvFrameData = Mat(mPreviewHeight, mPreviewWidth, CvType.CV_8UC1, planes[0])
-        var uvFrameData = Mat(mPreviewHeight / 2, mPreviewWidth / 2, CvType.CV_8UC2, planes[1])
+        val yuvFrameData = Mat(mPreviewHeight, mPreviewWidth, CvType.CV_8UC1, planes[0])
+//        val uvFrameData = Mat(mPreviewHeight / 2, mPreviewWidth / 2, CvType.CV_8UC2, planes[1])
 
         val gray = yuvFrameData.submat(0, mPreviewHeight, 0, mPreviewWidth)
-        Utils.matToBitmap(gray, mFrameBitmap)
+        val rgba = Mat().apply {
+            Gray2Rgb.convert(gray, this)
+        }
+
+        yuvFrameData.release()
+//        uvFrameData.release()
+
+
+        Utils.matToBitmap(rgba, mFrameBitmap)
 
         Canvas(mCroppedBitmap).drawBitmap(mFrameBitmap, mFrame2Crop, null)
 
-        yuvFrameData.release()
-        uvFrameData.release()
+        rgba.release()
+        gray.release()
     }
 
-//    fun gray(): Mat {
-//        return mYuvFrameData.submat(0, mHeight, 0, mWidth)
+//    override fun onCameraFrame(inputFrame: Camera2CvViewBase.CvCameraViewFrame): Mat {
+//        mFrameRgb?.release()
+//        mFrameProcess?.release()
+//
+//        mFrameRgb = Mat()
+//        mFrameProcess = frameProcessing(inputFrame.gray())
+//        Gray2Rgb.convert(mFrameProcess!!, mFrameRgb!!)
+//
+//        var contours = mutableListOf<MatOfPoint>()
+//        ContoursUtils.findExternals(mFrameProcess!!, contours)
+//        if (contours.isNotEmpty()) {
+//            contours = ContoursUtils.sortByDescendingArea(contours)
+//            mDrawContour.draw(mFrameRgb!!, contours[0])
+//            contours.forEach { it.release() }
+//        }
+//
+//        return mFrameRgb!!
 //    }
 //
-//    fun rgba(): Mat {
-//        org.opencv.imgproc.Imgproc.cvtColorTwoPlane(mYuvFrameData, mUvFrameData, mRgba, org.opencv.imgproc.Imgproc.COLOR_YUV2RGBA_NV21)
-//        return mRgba
+//    private fun frameProcessing(frame: Mat): Mat {
+//        var curr = frame
+//
+//        if (debug_enable_GaussianBlur) {
+//            val dst = Mat()
+//            mGaussianBlur.convert(curr, dst)
+//            curr.release()
+//            curr = dst
+//        }
+//
+//        if (debug_enable_AdaptiveThreshold) {
+//            val dst = Mat()
+//            mAdaptiveThreshold.convert(curr, dst)
+//            curr.release()
+//            curr = dst
+//        }
+//
+//        if (debug_enable_CrossDilate) {
+//            val dst = Mat()
+//            mCrossDilate.convert(curr, dst)
+//            curr.release()
+//            curr = dst
+//        }
+//
+//        if (debug_enable_Canny) {
+//            val dst = Mat()
+//            mCanny.convert(curr, dst)
+//            curr.release()
+//            curr = dst
+//        }
+//
+//        return curr
 //    }
+
 }
