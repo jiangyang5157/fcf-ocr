@@ -4,6 +4,7 @@ import android.graphics.*
 import android.util.Log
 import android.util.Size
 import com.fiserv.kit.render.Renderable
+import com.fiserv.mobiliti_ocr.proc.Rgb2Gray
 import com.fiserv.mobiliti_ocr.ui.FrameCameraActivity
 import com.fiserv.mobiliti_ocr.widget.overlay.OText
 import com.fiserv.mobiliti_ocr.widget.overlay.OverlayView
@@ -22,7 +23,7 @@ class FrameHandler : FrameCameraActivity.FrameCropper {
         const val IMAGE_FORMAT = ImageFormat.YUV_420_888
 
         const val DEFAULT_CROPPED_WIDTH = 320
-        const val DEFAULT_CROPPED_HEIGHT = 320
+        const val DEFAULT_CROPPED_HEIGHT = 240
     }
 
     /**
@@ -189,24 +190,31 @@ class FrameHandler : FrameCameraActivity.FrameCropper {
     override fun onNewFrame(planes: Array<ByteBuffer?>, fps: Int) {
         mFps = fps
 
-        val yuvFrameData = Mat(mPreviewHeight, mPreviewWidth, CvType.CV_8UC1, planes[0])
-//        val uvFrameData = Mat(mPreviewHeight / 2, mPreviewWidth / 2, CvType.CV_8UC2, planes[1])
-
-        val gray = yuvFrameData.submat(0, mPreviewHeight, 0, mPreviewWidth)
         val rgba = Mat().apply {
+            val yuvFrameData = Mat(mPreviewHeight, mPreviewWidth, CvType.CV_8UC1, planes[0])
+            val gray = yuvFrameData.submat(0, mPreviewHeight, 0, mPreviewWidth)
             Gray2Rgb.convert(gray, this)
+            yuvFrameData.release()
+            gray.release()
         }
-
-        yuvFrameData.release()
-//        uvFrameData.release()
-
-
         Utils.matToBitmap(rgba, mFrameBitmap)
 
-        Canvas(mCroppedBitmap).drawBitmap(mFrameBitmap, mFrame2Crop, null)
+        val croppedRgba = Mat().apply {
+            Canvas(mCroppedBitmap).drawBitmap(mFrameBitmap, mFrame2Crop, null)
+            Utils.bitmapToMat(mCroppedBitmap, this)
+        }
 
+        //
+        val processingMat = Mat()
+        Rgb2Gray.convert(croppedRgba, processingMat)
+
+        //
+        Utils.matToBitmap(processingMat, mCroppedBitmap)
+
+        //
         rgba.release()
-        gray.release()
+        croppedRgba.release()
+        processingMat.release()
     }
 
 //    override fun onCameraFrame(inputFrame: Camera2CvViewBase.CvCameraViewFrame): Mat {
