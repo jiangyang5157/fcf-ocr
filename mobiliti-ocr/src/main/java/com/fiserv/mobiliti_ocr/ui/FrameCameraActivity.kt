@@ -265,6 +265,7 @@ class FrameCameraActivity : AppCompatActivity(),
         mFrameHandler.onNewFrame(mImagePlanes, mImageProcessingRate.fpsRealTime)
 
         mOverlayView?.postInvalidate()
+
         mImageCloser?.run()
     }
 }
