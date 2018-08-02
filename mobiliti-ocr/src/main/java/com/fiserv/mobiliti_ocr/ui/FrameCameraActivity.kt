@@ -241,7 +241,7 @@ class FrameCameraActivity : AppCompatActivity(),
 
             mImageConverter = Runnable {
                 image.planes.forEachIndexed { i, plane ->
-                    mImagePlanes[i] = plane.buffer.duplicate()
+                    mImagePlanes[i] = plane.buffer
                 }
             }
 
