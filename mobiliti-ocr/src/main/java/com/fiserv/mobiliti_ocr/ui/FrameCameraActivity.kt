@@ -19,10 +19,10 @@ import com.fiserv.kit.ext.cameraManager
 import com.fiserv.kit.ext.instance
 import com.fiserv.kit.ext.replaceFragmentInActivity
 import com.fiserv.kit.render.FpsMeter
-import com.fiserv.mobiliti_ocr.proc.Frameproc
-import com.fiserv.mobiliti_ocr.proc.Imgproc
+import com.fiserv.mobiliti_ocr.frame.FrameHandler
 import com.fiserv.mobiliti_ocr.widget.overlay.OverlayView
 import org.opencv.android.OpenCVLoader
+import java.nio.ByteBuffer
 
 class FrameCameraActivity : AppCompatActivity(),
         FrameCamera2Fragment.ViewSizeListener,
@@ -56,8 +56,7 @@ class FrameCameraActivity : AppCompatActivity(),
 
         fun onOverlayViewCreated(view: OverlayView)
 
-        fun onNewFrame(frameInts: IntArray, fps: Int)
-
+        fun onNewFrame(planes: Array<ByteBuffer?>, fps: Int)
     }
 
     private var mBackgroundHandler: Handler? = null
@@ -66,17 +65,14 @@ class FrameCameraActivity : AppCompatActivity(),
     private var mPreviewWidth = 0
     private var mPreviewHeight = 0
 
-    private var mFrameInts: IntArray? = null
-
     private val mImageProcessingRate = FpsMeter()
     private var mIsProcessingFrame = false
-    private val mYuvBytes = arrayOfNulls<ByteArray?>(3)
     private var mImageConverter: Runnable? = null
     private var mImageCloser: Runnable? = null
+    private val mFrameHandler = FrameHandler()
+    private val mImagePlanes = arrayOfNulls<ByteBuffer?>(3)
 
     private var mOverlayView: OverlayView? = null
-
-    private val mFrameCropper = Frameproc()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(null)
@@ -115,12 +111,12 @@ class FrameCameraActivity : AppCompatActivity(),
         replaceFragmentInActivity(R.id.camera_container, camera2Fragment)
 
         mOverlayView = findViewById(R.id.view_overlay) as OverlayView
-        mFrameCropper.onOverlayViewCreated(mOverlayView!!)
+        mFrameHandler.onOverlayViewCreated(mOverlayView!!)
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        mFrameCropper.onRelease()
+        mFrameHandler.onRelease()
     }
 
     private fun hasPermission(): Boolean {
@@ -214,15 +210,14 @@ class FrameCameraActivity : AppCompatActivity(),
 
     override fun onViewSizeChanged(w: Int, h: Int) {
         Log.d(TAG, "onViewSizeChanged: $w")
-        mFrameCropper.onViewSizeChanged(w, h)
+        mFrameHandler.onViewSizeChanged(w, h)
     }
 
     override fun onPreviewSizeChosen(size: Size, cameraRotation: Int, screenRotation: Int) {
         Log.d(TAG, "onPreviewSizeChosen: $size")
         mPreviewWidth = size.width
         mPreviewHeight = size.height
-        mFrameInts = IntArray(mPreviewWidth * mPreviewHeight)
-        mFrameCropper.onPreviewSizeChosen(size, cameraRotation, screenRotation)
+        mFrameHandler.onPreviewSizeChosen(size, cameraRotation, screenRotation)
     }
 
     override fun onImageAvailable(reader: ImageReader?) {
@@ -244,31 +239,10 @@ class FrameCameraActivity : AppCompatActivity(),
             Trace.beginSection("Accepted Available Image")
             mIsProcessingFrame = true
 
-            val planes = image.planes
-            planes.forEachIndexed { i, plane ->
-                plane.buffer.apply {
-                    if (mYuvBytes[i] == null) {
-                        Log.d(TAG, "Initializing buffer " + i + " at size " + capacity())
-                        mYuvBytes[i] = ByteArray(capacity())
-                    }
-                    get(mYuvBytes[i])
-                }
-            }
-
-            val yRowStride = planes[0].rowStride
-            val uvRowStride = planes[1].rowStride
-            val uvPixelStride = planes[1].pixelStride
             mImageConverter = Runnable {
-                Imgproc.convertYuv420ToArgb8888(
-                        mYuvBytes[0]!!,
-                        mYuvBytes[1]!!,
-                        mYuvBytes[2]!!,
-                        mPreviewWidth,
-                        mPreviewHeight,
-                        yRowStride,
-                        uvRowStride,
-                        uvPixelStride,
-                        mFrameInts!!)
+                image.planes.forEachIndexed { i, plane ->
+                    mImagePlanes[i] = plane.buffer.duplicate()
+                }
             }
 
             mImageCloser = Runnable {
@@ -277,7 +251,7 @@ class FrameCameraActivity : AppCompatActivity(),
             }
 
             runInBackground(Runnable {
-                processImage()
+                processFrame()
             })
         } catch (e: Exception) {
             Log.d(TAG, "onImageAvailable: Exception $e")
@@ -285,16 +259,12 @@ class FrameCameraActivity : AppCompatActivity(),
         Trace.endSection()
     }
 
-    private fun processImage() {
-        // gen frame bytes
+    private fun processFrame() {
         mImageConverter?.run()
 
-        mFrameCropper.onNewFrame(mFrameInts!!, mImageProcessingRate.fpsRealTime)
+        mFrameHandler.onNewFrame(mImagePlanes, mImageProcessingRate.fpsRealTime)
 
-        // draw overlays
         mOverlayView?.postInvalidate()
-
-        // close image
         mImageCloser?.run()
     }
 }

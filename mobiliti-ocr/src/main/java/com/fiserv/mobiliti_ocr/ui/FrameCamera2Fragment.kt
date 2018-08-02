@@ -1,7 +1,6 @@
 package com.fiserv.mobiliti_ocr.ui
 
 import android.content.res.Configuration
-import android.graphics.ImageFormat
 import android.graphics.Matrix
 import android.graphics.RectF
 import android.graphics.SurfaceTexture
@@ -19,6 +18,7 @@ import android.view.*
 import com.fiserv.kit.ext.cameraManager
 import com.fiserv.kit.utils.CompareSizesByArea
 import com.fiserv.kit.widget.AutoFitTextureView
+import com.fiserv.mobiliti_ocr.frame.FrameHandler
 import java.util.*
 import java.util.concurrent.Semaphore
 import java.util.concurrent.TimeUnit
@@ -31,8 +31,6 @@ class FrameCamera2Fragment : Fragment() {
 
         const val KEY_CAMERA_ID = "KEY_CAMERA_ID"
         const val KEY_DESIRED_SIZE = "KEY_DESIRED_SIZE"
-
-        const val IMAGE_FORMAT = ImageFormat.YUV_420_888
     }
 
     internal interface ViewSizeListener {
@@ -161,7 +159,7 @@ class FrameCamera2Fragment : Fragment() {
 
             // Create the reader for the preview frames.
             mPreviewReader = ImageReader.newInstance(
-                    mPreviewSize.width, mPreviewSize.height, IMAGE_FORMAT, 2)
+                    mPreviewSize.width, mPreviewSize.height, FrameHandler.IMAGE_FORMAT, 2)
 
             mPreviewReader?.setOnImageAvailableListener(mOnImageAvailableListener, mBackgroundHandler)
             mPreviewRequestBuilder?.addTarget(mPreviewReader?.surface)
