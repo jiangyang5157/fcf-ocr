@@ -4,7 +4,7 @@ import org.opencv.core.Mat
 import org.opencv.core.MatOfPoint
 import org.opencv.imgproc.Imgproc
 
-class ContoursUtils {
+object ContoursUtils {
 
     fun findExternals(src: Mat, dst: MutableList<MatOfPoint>) {
         val hierarchy = Mat()

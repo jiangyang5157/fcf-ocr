@@ -8,10 +8,13 @@ import com.fiserv.mobiliti_ocr.proc.Rgb2Gray
 import com.fiserv.mobiliti_ocr.ui.FrameCameraActivity
 import com.fiserv.mobiliti_ocr.widget.overlay.OText
 import com.fiserv.mobiliti_ocr.widget.overlay.OverlayView
-import com.gmail.jiangyang5157.sudoku.widget.scan.imgproc.Gray2Rgb
+import com.gmail.jiangyang5157.sudoku.widget.scan.imgproc.*
 import org.opencv.android.Utils
+import org.opencv.core.Core
 import org.opencv.core.CvType
 import org.opencv.core.Mat
+import org.opencv.core.MatOfPoint
+import org.opencv.imgproc.Imgproc
 import java.nio.ByteBuffer
 
 class FrameHandler : FrameCameraActivity.FrameCropper {
@@ -215,69 +218,69 @@ class FrameHandler : FrameCameraActivity.FrameCropper {
         }
 
         //
-        val processingMat = Mat()
-        Rgb2Gray.convert(croppedRgba, processingMat)
+        val processed = processMat(croppedRgba)
+
+        var contours = mutableListOf<MatOfPoint>()
+        ContoursUtils.findExternals(processed, contours)
+        if (contours.isNotEmpty()) {
+            contours = ContoursUtils.sortByDescendingArea(contours)
+            mDrawContour.draw(processed, contours[0])
+            contours.forEach { it.release() }
+        }
 
         //
-        Utils.matToBitmap(processingMat, mCroppedBitmap)
+        Utils.matToBitmap(processed, mCroppedBitmap)
 
         //
         rgba.release()
         croppedRgba.release()
-        processingMat.release()
+        processed.release()
     }
 
-//    override fun onCameraFrame(inputFrame: Camera2CvViewBase.CvCameraViewFrame): Mat {
-//        mFrameRgb?.release()
-//        mFrameProcess?.release()
-//
-//        mFrameRgb = Mat()
-//        mFrameProcess = frameProcessing(inputFrame.gray())
-//        Gray2Rgb.convert(mFrameProcess!!, mFrameRgb!!)
-//
-//        var contours = mutableListOf<MatOfPoint>()
-//        ContoursUtils.findExternals(mFrameProcess!!, contours)
-//        if (contours.isNotEmpty()) {
-//            contours = ContoursUtils.sortByDescendingArea(contours)
-//            mDrawContour.draw(mFrameRgb!!, contours[0])
-//            contours.forEach { it.release() }
-//        }
-//
-//        return mFrameRgb!!
-//    }
-//
-//    private fun frameProcessing(frame: Mat): Mat {
-//        var curr = frame
-//
-//        if (debug_enable_GaussianBlur) {
-//            val dst = Mat()
-//            mGaussianBlur.convert(curr, dst)
-//            curr.release()
-//            curr = dst
-//        }
-//
-//        if (debug_enable_AdaptiveThreshold) {
-//            val dst = Mat()
-//            mAdaptiveThreshold.convert(curr, dst)
-//            curr.release()
-//            curr = dst
-//        }
-//
-//        if (debug_enable_CrossDilate) {
-//            val dst = Mat()
-//            mCrossDilate.convert(curr, dst)
-//            curr.release()
-//            curr = dst
-//        }
-//
-//        if (debug_enable_Canny) {
-//            val dst = Mat()
-//            mCanny.convert(curr, dst)
-//            curr.release()
-//            curr = dst
-//        }
-//
-//        return curr
-//    }
+    private fun processMat(rgba: Mat): Mat {
+        var curr = Mat()
+        Rgb2Gray.convert(rgba, curr)
+
+        if (debug_enable_GaussianBlur) {
+            val dst = Mat()
+            mGaussianBlur.convert(curr, dst)
+            curr.release()
+            curr = dst
+        }
+
+        if (debug_enable_AdaptiveThreshold) {
+            val dst = Mat()
+            mAdaptiveThreshold.convert(curr, dst)
+            curr.release()
+            curr = dst
+        }
+
+        if (debug_enable_CrossDilate) {
+            val dst = Mat()
+            mCrossDilate.convert(curr, dst)
+            curr.release()
+            curr = dst
+        }
+
+        if (debug_enable_Canny) {
+            val dst = Mat()
+            mCanny.convert(curr, dst)
+            curr.release()
+            curr = dst
+        }
+
+        return curr
+    }
+
+    private var debug_enable_GaussianBlur = true
+    private var debug_enable_AdaptiveThreshold = true
+    private var debug_enable_CrossDilate = false
+    private var debug_enable_Canny = false
+
+    private val mGaussianBlur = GaussianBlur(5.0, 5.0, 0.0, 0.0, Core.BORDER_DEFAULT)
+    private val mAdaptiveThreshold = AdaptiveThreshold(255.0, Imgproc.ADAPTIVE_THRESH_MEAN_C, Imgproc.THRESH_BINARY_INV, 5, 2.0)
+    private val mCrossDilate = CrossDilate(0.5)
+    private val mCanny = Canny(127.0, 255.0, 3, false)
+    private val mDrawContour = DrawContour(Color.RED, 2)
 
 }
