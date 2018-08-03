@@ -12,7 +12,6 @@ import com.gmail.jiangyang5157.sudoku.widget.scan.imgproc.Gray2Rgb
 import org.opencv.android.Utils
 import org.opencv.core.CvType
 import org.opencv.core.Mat
-import org.opencv.imgproc.Imgproc
 import java.nio.ByteBuffer
 
 class FrameHandler : FrameCameraActivity.FrameCropper {
@@ -22,8 +21,9 @@ class FrameHandler : FrameCameraActivity.FrameCropper {
 
         const val IMAGE_FORMAT = ImageFormat.YUV_420_888
 
-        const val DEFAULT_CROPPED_WIDTH = 320
-        const val DEFAULT_CROPPED_HEIGHT = 240
+        val BITMAP_CONFIG = Bitmap.Config.ARGB_8888
+
+        const val MAX_CROPPED_SIZE = 480
     }
 
     /**
@@ -39,10 +39,15 @@ class FrameHandler : FrameCameraActivity.FrameCropper {
     private var mPreviewHeight = 0
 
     /**
-     * Crop each frame from the preview size to an other size
+     * Camera orientation relative to screen canvas: cameraRotation - screenRotation
      */
-    private var mCroppedWidth = DEFAULT_CROPPED_WIDTH
-    private var mCroppedHeight = DEFAULT_CROPPED_HEIGHT
+    private var mCameraOrientation = 0
+
+    /**
+     * Crop each frame from the preview size to a new size
+     */
+    private var mCroppedWidth = MAX_CROPPED_SIZE
+    private var mCroppedHeight = MAX_CROPPED_SIZE
 
     private var mFrameBitmap: Bitmap? = null
     private var mCroppedBitmap: Bitmap? = null
@@ -50,8 +55,9 @@ class FrameHandler : FrameCameraActivity.FrameCropper {
     private var mFrame2Crop: Matrix? = null
     private var mCrop2Frame: Matrix? = null
 
-    private var mCroppedInts: IntArray? = null
-
+    /**
+     *
+     */
     private var mFps = 0
 
     private var mDebugText: OText? = null
@@ -64,29 +70,35 @@ class FrameHandler : FrameCameraActivity.FrameCropper {
     override fun onViewSizeChanged(w: Int, h: Int) {
         mViewWidth = w
         mViewHeight = h
+
+        // initialize cropped size
+        if (w > h) {
+            mCroppedHeight = mCroppedWidth * mViewHeight / mViewWidth
+        } else {
+            mCroppedWidth = mCroppedHeight * mViewWidth / mViewHeight
+        }
+
+        // initialize bitmap
+        mFrameBitmap = Bitmap.createBitmap(mPreviewWidth, mPreviewHeight, BITMAP_CONFIG)
+        mCroppedBitmap = Bitmap.createBitmap(mCroppedWidth, mCroppedHeight, BITMAP_CONFIG)
+
+        // initialize matrix
+        mFrame2Crop = buildTransformationMatrix(
+                mPreviewWidth, mPreviewHeight,
+                mCroppedWidth, mCroppedHeight,
+                mCameraOrientation, true)
+        mCrop2Frame = Matrix()
+        mFrame2Crop?.invert(mCrop2Frame)
+
+        //
         mDebugText = OText(size = 40f, color = Color.RED, x = 20f, y = h.toFloat() - 20)
     }
 
     override fun onPreviewSizeChosen(size: Size, cameraRotation: Int, screenRotation: Int) {
         mPreviewWidth = size.width
         mPreviewHeight = size.height
-
-        val rotation = cameraRotation - screenRotation
-        Log.d(TAG, "Camera orientation relative to screen canvas: $rotation")
-
-        mFrameBitmap = Bitmap.createBitmap(
-                mPreviewWidth, mPreviewHeight, Bitmap.Config.ARGB_8888)
-
-
-        mCroppedBitmap = Bitmap.createBitmap(
-                mCroppedWidth, mCroppedHeight, Bitmap.Config.ARGB_8888)
-        mFrame2Crop = getTransformationMatrix(
-                mPreviewWidth, mPreviewHeight, mCroppedWidth, mCroppedHeight, rotation, true)
-
-        mCrop2Frame = Matrix()
-        mFrame2Crop?.invert(mCrop2Frame)
-
-        mCroppedInts = IntArray(mCroppedWidth * mCroppedHeight)
+        mCameraOrientation = cameraRotation - screenRotation
+        Log.d(TAG, "Camera orientation relative to screen canvas: $mCameraOrientation")
     }
 
     /**
@@ -97,13 +109,11 @@ class FrameHandler : FrameCameraActivity.FrameCropper {
      * @param srcHeight           Height of source frame.
      * @param dstWidth            Width of destination frame.
      * @param dstHeight           Height of destination frame.
-     * @param applyRotation       Amount of rotation to apply from one frame to another.
-     * Must be a multiple of 90.
-     * @param maintainAspectRatio If true, will ensure that scaling in x and y remains constant,
-     * cropping the image if necessary.
+     * @param applyRotation       Amount of rotation to apply from one frame to another. Must be a multiple of 90.
+     * @param maintainAspectRatio If true, will ensure that scaling in x and y remains constant, cropping the image if necessary.
      * @return The transformation fulfilling the desired requirements.
      */
-    fun getTransformationMatrix(
+    private fun buildTransformationMatrix(
             srcWidth: Int,
             srcHeight: Int,
             dstWidth: Int,
@@ -111,17 +121,17 @@ class FrameHandler : FrameCameraActivity.FrameCropper {
             applyRotation: Int,
             maintainAspectRatio: Boolean): Matrix {
 
-        val matrix = Matrix()
+        val ret = Matrix()
         if (applyRotation != 0) {
             if (applyRotation % 90 != 0) {
                 Log.w(TAG, "Rotation of $applyRotation % 90 != 0")
             }
 
             // Translate so center of image is at origin.
-            matrix.postTranslate(-srcWidth / 2.0f, -srcHeight / 2.0f)
+            ret.postTranslate(-srcWidth / 2.0f, -srcHeight / 2.0f)
 
             // Rotate around origin.
-            matrix.postRotate(applyRotation.toFloat())
+            ret.postRotate(applyRotation.toFloat())
         }
 
         // Account for the already applied rotation, if any, and then determine how
@@ -140,19 +150,19 @@ class FrameHandler : FrameCameraActivity.FrameCropper {
                 // Scale by minimum factor so that dst is filled completely while
                 // maintaining the aspect ratio. Some image may fall off the edge.
                 val scaleFactor = Math.max(scaleFactorX, scaleFactorY)
-                matrix.postScale(scaleFactor, scaleFactor)
+                ret.postScale(scaleFactor, scaleFactor)
             } else {
                 // Scale exactly to fill dst from src.
-                matrix.postScale(scaleFactorX, scaleFactorY)
+                ret.postScale(scaleFactorX, scaleFactorY)
             }
         }
 
         if (applyRotation != 0) {
             // Translate back from origin centered reference to destination frame.
-            matrix.postTranslate(dstWidth / 2.0f, dstHeight / 2.0f)
+            ret.postTranslate(dstWidth / 2.0f, dstHeight / 2.0f)
         }
 
-        return matrix
+        return ret
     }
 
     override fun onOverlayViewCreated(view: OverlayView) {
