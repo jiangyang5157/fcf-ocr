@@ -1,0 +1,2 @@
+model_checkpoint_path: "/Users/Tracy/Documents/FCF/LetterClassify/saved_model_capital_2/FCF-0"
+all_model_checkpoint_paths: "/Users/Tracy/Documents/FCF/LetterClassify/saved_model_capital_2/FCF-0"
