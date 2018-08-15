@@ -11,10 +11,23 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-        <activity android:name=".ui.MainActivity">
+
+        <activity
+            android:name="com.fiserv.fcf.ui.MainActivity"
+            android:label="@string/luncher_name_1"
+            android:taskAffinity="com.fiserv.fcf.ui.MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
 
+        <activity
+            android:name="com.fiserv.fcf.ui.DemoActivity"
+            android:label="@string/luncher_name_2"
+            android:taskAffinity="com.fiserv.fcf.ui.DemoActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>

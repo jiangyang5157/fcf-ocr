@@ -1,5 +1,8 @@
 <resources>
     <string name="app_name">fiserv-fcf</string>
+    <string name="luncher_name_1">fiserv-fcf 1</string>
+    <string name="luncher_name_2">fiserv-fcf 2</string>
+
     <string name="prediction">Prediction</string>
     <string name="probability">Probability</string>
     <string name="timecost">Timecost</string>
