@@ -22,7 +22,7 @@
                 android:layout_height="wrap_content"
                 android:hint="Desired preview width (n > 0)"
                 android:inputType="number"
-                android:text="640" />
+                android:text="6400" />
         </android.support.design.widget.TextInputLayout>
 
         <android.support.design.widget.TextInputLayout
@@ -35,7 +35,7 @@
                 android:layout_height="wrap_content"
                 android:hint="Desired preview height (n > 0)"
                 android:inputType="number"
-                android:text="480" />
+                android:text="4800" />
         </android.support.design.widget.TextInputLayout>
 
         <Button

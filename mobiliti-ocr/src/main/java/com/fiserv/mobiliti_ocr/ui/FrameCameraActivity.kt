@@ -38,8 +38,8 @@ class FrameCameraActivity : AppCompatActivity(),
          */
         const val KEY_CAMERA_DESIRED_WIDTH = "KEY_CAMERA_DESIRED_WIDTH"
         const val KEY_CAMERA_DESIRED_HEIGHT = "KEY_CAMERA_DESIRED_HEIGHT"
-        const val DEFAULT_CAMERA_DESIRED_WIDTH = 640
-        const val DEFAULT_CAMERA_DESIRED_HEIGHT = 480
+        const val DEFAULT_CAMERA_DESIRED_WIDTH = 6400
+        const val DEFAULT_CAMERA_DESIRED_HEIGHT = 4800
 
         init {
             if (OpenCVLoader.initDebug()) {
