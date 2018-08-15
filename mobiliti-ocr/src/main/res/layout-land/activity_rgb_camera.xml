@@ -26,4 +26,6 @@
 
     </FrameLayout>
 
+    <include layout="@layout/debug_panel" />
+
 </RelativeLayout>

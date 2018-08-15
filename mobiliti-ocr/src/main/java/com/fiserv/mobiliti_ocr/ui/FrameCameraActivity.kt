@@ -112,6 +112,7 @@ class FrameCameraActivity : AppCompatActivity(),
 
         mOverlayView = findViewById(R.id.view_overlay) as OverlayView
         mFrameHandler.onOverlayViewCreated(mOverlayView!!)
+        mFrameHandler.setup_debug_panel(this)
     }
 
     override fun onDestroy() {
