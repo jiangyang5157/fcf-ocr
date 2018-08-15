@@ -11,15 +11,13 @@ import com.fiserv.mobiliti_ocr.widget.overlay.OverlayView
 import com.gmail.jiangyang5157.sudoku.widget.scan.imgproc.*
 import org.opencv.android.Utils
 import org.opencv.core.Core
-import org.opencv.core.CvType
 import org.opencv.core.Mat
 import org.opencv.core.MatOfPoint
 import org.opencv.imgproc.Imgproc
 import java.nio.ByteBuffer
-import android.R.attr.src
-import android.R.attr.angle
 import com.fiserv.mobiliti_ocr.proc.ByteBuffer2Rgb
-
+import com.fiserv.mobiliti_ocr.proc.Gray2Rgb
+import com.fiserv.mobiliti_ocr.proc.MatScale
 
 class FrameHandler : FrameCameraActivity.FrameCropper {
 
@@ -63,11 +61,7 @@ class FrameHandler : FrameCameraActivity.FrameCropper {
     private var mFrame2Crop: Matrix? = null
     private var mCrop2Frame: Matrix? = null
 
-    private var mByteBuffer2Rgb: ByteBuffer2Rgb? = null
-
-    /**
-     *
-     */
+    //
     private var mFps = 0
 
     private var mDebugText: OText? = null
@@ -81,6 +75,17 @@ class FrameHandler : FrameCameraActivity.FrameCropper {
         mViewWidth = w
         mViewHeight = h
 
+        // debug
+        mDebugText = OText(size = 40f, color = Color.RED, x = 20f, y = mViewHeight.toFloat() - 20)
+    }
+
+    override fun onPreviewSizeChosen(size: Size, cameraRotation: Int, screenRotation: Int) {
+        mPreviewWidth = size.width
+        mPreviewHeight = size.height
+        mCameraOrientation = cameraRotation - screenRotation
+        Log.d(TAG, "onPreviewSizeChosen - preview height(${mPreviewWidth}_$mPreviewHeight) camera rotation($cameraRotation) screen rotation($screenRotation)")
+        Log.d(TAG, "Camera orientation relative to screen canvas: $mCameraOrientation")
+
         // initialize cropped size
         if (mPreviewWidth < mPreviewHeight) {
             mCroppedScale = mCroppedHeight / mPreviewHeight.toDouble()
@@ -90,9 +95,6 @@ class FrameHandler : FrameCameraActivity.FrameCropper {
             mCroppedHeight = (mPreviewHeight * mCroppedScale).toInt()
         }
         Log.d(TAG, "onViewSizeChanged - preview height(${mPreviewWidth}_$mPreviewHeight) cropped(${mCroppedWidth}_$mCroppedHeight) cropped scale($mCroppedScale)")
-
-        // initialize ByteBuffer2Rgb
-        mByteBuffer2Rgb = ByteBuffer2Rgb(mPreviewWidth, mPreviewHeight)
 
         // initialize bitmap
         mFrameBitmap = Bitmap.createBitmap(mPreviewWidth, mPreviewHeight, BITMAP_CONFIG)
@@ -105,17 +107,6 @@ class FrameHandler : FrameCameraActivity.FrameCropper {
                 mCameraOrientation, true)
         mCrop2Frame = Matrix()
         mFrame2Crop?.invert(mCrop2Frame)
-
-        //
-        mDebugText = OText(size = 40f, color = Color.RED, x = 20f, y = h.toFloat() - 20)
-    }
-
-    override fun onPreviewSizeChosen(size: Size, cameraRotation: Int, screenRotation: Int) {
-        mPreviewWidth = size.width
-        mPreviewHeight = size.height
-        mCameraOrientation = cameraRotation - screenRotation
-        Log.d(TAG, "onPreviewSizeChosen - preview height(${mPreviewWidth}_$mPreviewHeight) camera rotation($cameraRotation) screen rotation($screenRotation)")
-        Log.d(TAG, "Camera orientation relative to screen canvas: $mCameraOrientation")
     }
 
     /**
@@ -182,40 +173,6 @@ class FrameHandler : FrameCameraActivity.FrameCropper {
         return ret
     }
 
-    private fun reshapeMat(
-            srcMat: Mat,
-            dstWidth: Int,
-            dstHeight: Int,
-            applyRotation: Int): Mat {
-
-        val srcWidth = srcMat.width()
-        val srcHeight = srcMat.height()
-
-        val transpose = (Math.abs(applyRotation) + 90) % 180 == 0
-        val inWidth = if (transpose) srcHeight else srcWidth
-        val inHeight = if (transpose) srcWidth else srcHeight
-
-        var scale = 1.0
-        if (inWidth != dstWidth || inHeight != dstHeight) {
-            val scaleFactorX = dstWidth / inWidth.toFloat()
-            val scaleFactorY = dstHeight / inHeight.toFloat()
-            scale = Math.max(scaleFactorX, scaleFactorY).toDouble()
-        }
-
-        val center = org.opencv.core.Point(srcWidth / 2.0, srcHeight / 2.0)
-        val rotation = Imgproc.getRotationMatrix2D(center, applyRotation.toDouble(), scale)
-
-//        val size = org.opencv.core.Size(inWidth.toDouble(), inHeight.toDouble())
-//        Imgproc.warpAffine(this, this, rotation, size)
-//
-//        val m = Mat()
-//        Imgproc.re
-
-//        return Imgproc.getRotationMatrix2D(center, angle, scale)
-
-        return Mat()
-    }
-
     override fun onOverlayViewCreated(view: OverlayView) {
 
         // #### Debug usage: log text
@@ -255,58 +212,35 @@ class FrameHandler : FrameCameraActivity.FrameCropper {
             return
         }
 
-        var rgba = mByteBuffer2Rgb!!.map(planes).apply {
-            val size = org.opencv.core.Size(width().toDouble(), height().toDouble())
-            val center = org.opencv.core.Point(size.width / 2.0, size.height / 2.0)
-//            val angle = (Math.abs(mCameraOrientation) + 90) % 180.0
-            val angle = mCameraOrientation.toDouble()
-            val scale = 1.0
-            val rotation = Imgproc.getRotationMatrix2D(center, angle, scale)
-            Imgproc.warpAffine(this, this, rotation, size)
-        }
-
-
+        // raw rgba mat
+        val rgba = ByteBuffer2Rgb(mPreviewWidth, mPreviewHeight).map(planes)
+        // raw rgba bitmap
         Utils.matToBitmap(rgba, mFrameBitmap)
 
-//        val croppedRgba = Mat().apply {
-//            Canvas(mCroppedBitmap).drawBitmap(mFrameBitmap, mFrame2Crop, null)
-//            Utils.bitmapToMat(mCroppedBitmap, this)
-//        }
-//
-        val croppedRgba = Mat().apply {
-            Imgproc.resize(rgba, this, org.opencv.core.Size(rgba.width() * mCroppedScale, rgba.height() * mCroppedScale))
+        // cropping raw rgba
+        val croppedRgba = MatScale(mCroppedScale).map(rgba)
+        // processing cropped
+        val processedGray = processMat(croppedRgba)
+        val processedRgba = Mat()
+        Gray2Rgb.convert(processedGray, processedRgba)
+
+
+        //
+        var contours = mutableListOf<MatOfPoint>()
+        ContoursUtils.findExternals(processedGray, contours)
+        if (contours.isNotEmpty()) {
+            contours = ContoursUtils.sortByDescendingArea(contours)
+            mDrawContour.draw(processedRgba, contours[0])
+            contours.forEach { it.release() }
         }
 
-//        val croppedRgba = Mat().apply {
-//            val size = org.opencv.core.Size(rgba.width() * mCroppedScale, rgba.height() * mCroppedScale)
-//            val center = org.opencv.core.Point(size.width / 2.0, size.height / 2.0)
-//            val angle = (Math.abs(mCameraOrientation) + 90) % 180.0
-////            val angle = mCameraOrientation.toDouble()
-//            val rotation = Imgproc.getRotationMatrix2D(center, angle, mCroppedScale)
-//
-////            val size =  org.opencv.core.Size(rgba.width() * mCroppedScale, rgba.height() * mCroppedScale)
-//            Imgproc.warpAffine(rgba, this, rotation, size)
-//        }
+        // convert processed cropped to bitmap
+        Utils.matToBitmap(processedRgba, mCroppedBitmap)
 
-
-        //
-        val processed = processMat(croppedRgba)
-
-//        var contours = mutableListOf<MatOfPoint>()
-//        ContoursUtils.findExternals(processed, contours)
-//        if (contours.isNotEmpty()) {
-//            contours = ContoursUtils.sortByDescendingArea(contours)
-//            mDrawContour.draw(processed, contours[0])
-//            contours.forEach { it.release() }
-//        }
-
-        //
-        Utils.matToBitmap(processed, mCroppedBitmap)
-
-        //
         rgba.release()
         croppedRgba.release()
-        processed.release()
+        processedGray.release()
+        processedRgba.release()
     }
 
     private fun processMat(rgba: Mat): Mat {
@@ -344,10 +278,10 @@ class FrameHandler : FrameCameraActivity.FrameCropper {
         return curr
     }
 
-    private var debug_enable_GaussianBlur = false
-    private var debug_enable_AdaptiveThreshold = false
-    private var debug_enable_CrossDilate = false
-    private var debug_enable_Canny = false
+    private var debug_enable_GaussianBlur = true
+    private var debug_enable_AdaptiveThreshold = true
+    private var debug_enable_CrossDilate = true
+    private var debug_enable_Canny = true
 
     private val mGaussianBlur = GaussianBlur(5.0, 5.0, 0.0, 0.0, Core.BORDER_DEFAULT)
     private val mAdaptiveThreshold = AdaptiveThreshold(255.0, Imgproc.ADAPTIVE_THRESH_MEAN_C, Imgproc.THRESH_BINARY_INV, 5, 2.0)

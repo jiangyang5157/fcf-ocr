@@ -1,4 +1,4 @@
-package com.gmail.jiangyang5157.sudoku.widget.scan.imgproc
+package com.fiserv.mobiliti_ocr.proc
 
 import com.fiserv.kit.Converter
 import org.opencv.core.Mat
