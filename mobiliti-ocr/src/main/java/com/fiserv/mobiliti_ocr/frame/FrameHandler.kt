@@ -11,20 +11,16 @@ import android.widget.SeekBar
 import android.widget.TextView
 import com.fiserv.kit.render.Renderable
 import com.fiserv.mobiliti_ocr.R
-import com.fiserv.mobiliti_ocr.proc.Rgb2Gray
+import com.fiserv.mobiliti_ocr.proc.*
 import com.fiserv.mobiliti_ocr.ui.FrameCameraActivity
 import com.fiserv.mobiliti_ocr.widget.overlay.OText
 import com.fiserv.mobiliti_ocr.widget.overlay.OverlayView
-import com.gmail.jiangyang5157.sudoku.widget.scan.imgproc.*
 import org.opencv.android.Utils
 import org.opencv.core.Core
 import org.opencv.core.Mat
 import org.opencv.core.MatOfPoint
 import org.opencv.imgproc.Imgproc
 import java.nio.ByteBuffer
-import com.fiserv.mobiliti_ocr.proc.ByteBuffer2Rgb
-import com.fiserv.mobiliti_ocr.proc.Gray2Rgb
-import com.fiserv.mobiliti_ocr.proc.MatScale
 
 class FrameHandler : FrameCameraActivity.FrameCropper {
 
